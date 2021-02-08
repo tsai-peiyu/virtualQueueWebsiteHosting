@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link type="text/css" rel="stylesheet" href="./styles/style.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css"
+        integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script src="./scripts/script.js"></script>
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+</head>
+
+<script>
+
+    google.charts.load('current', { 'packages': ['corechart', 'line'] });
+
+    function loadGraph(data, graph) {
+        var dataTable = new google.visualization.DataTable();
+        dataTable.addColumn('string', 'time');
+        dataTable.addColumn('number', 'Customer');
+
+        for (var i = 0; i < data.length; i++) {
+            var dateObj = new Date(data[i].timestamp * 1000);
+            var timestamp = dateObj.getHours() + ":" + dateObj.getMinutes();// + ":" + dateObj.getSeconds();
+            var count = parseInt(data[i].count);
+
+            dataTable.addRows([
+                [timestamp, count]
+            ]);
+        }
+        var options = {
+            legend: 'none',
+            width: 600,
+            height: 400,
+            backgroundColor: '#fdb812',
+            colors: ['#ffffff'],
+            hAxis: {
+                title: 'Time'
+            },
+            vAxis: {
+                //gridlines: {color: '#000000'},
+                title: '# of Request'
+            }
+        };
+
+        var chart = new google.visualization.LineChart(document.getElementById(graph));
+        chart.draw(dataTable, options);
+    }
+
+    function getDateString(number) {
+        return (number.toString().length == 2 ? '' : '0') + number
+    }
+
+    function arrivalRateGraph(id) {
+        var className = document.getElementById(id).className;
+        console.log(className)
+
+        var loader2 = document.getElementsByClassName(className)[10].id;
+        console.log(loader2)
+        var loader2ID = document.getElementById(loader2);
+        console.log(loader2ID)
+
+        loader2ID.style.display = "block";
+
+        if (document.getElementById(id) == null) {
+            return
+        }
+        var selected = document.getElementById(id).selectedIndex;
+        var queue_id = document.getElementsByTagName("option")[selected].value;
+        if (queue_id == "Select Queue ID") {
+            return
+        }
+        var className = document.getElementById(id).className;
+        var network = document.getElementsByClassName(className)[7].id;
+        var networkID = document.getElementById(network);
+
+
+        var duration = 3
+        var time = new Date();
+        // from has to be in the past, not now
+        time.setMinutes(time.getMinutes() - duration)
+        var offset = time.getTimezoneOffset() * (-1) / 60;
+        var from = time.getFullYear() +
+            '-' + getDateString(time.getMonth() + 1) +
+            '-' + getDateString(time.getDate()) +
+            'T' + getDateString(time.getHours()) +
+            ':' + getDateString(time.getMinutes()) +
+            ':' + getDateString(time.getSeconds()) +
+            (offset >= 0 ? '+' : '-') +
+            getDateString(offset) + ':00';
+        console.log(from);
+
+        axios.get(`http://localhost:8080/company/arrival_rate/`, {
+            params: {
+                queue_id,
+                from,
+                duration
+            }
+        }).then(function (res) {
+            networkID.style.display = "none";
+            loader2ID.style.display = "none";
+            console.log(res.data)
+            // Load google charts
+
+            var line_graph = document.getElementsByClassName(className)[11].id;
+            console.log(document.getElementById(line_graph));
+            if (document.getElementById(line_graph).childElementCount == 0) {
+                setInterval(function () { arrivalRateGraph(id) }, 3000);
+            }
+            google.charts.setOnLoadCallback(loadGraph(res.data, line_graph));
+
+
+        }).catch(function (error) {
+
+            if (error.message == 'Network Error') {
+                networkID.style.display = "block";
+            }
+        });
+    }
+
+    var i = 0;
+    var j = i;
+    function addTrackerContainer() {
+        var trackerRow = document.getElementById("trackerRow");
+
+        var trackerContainer = document.createElement("div");
+        trackerContainer.setAttribute("class", "col-xs-12 col-sm-6");
+        trackerContainer.setAttribute("id", ++i);
+        trackerContainer.innerHTML = document.getElementById("trackerHTML").innerHTML;
+
+        var buttonDiv = document.getElementById("buttonDiv");
+        trackerRow.insertBefore(trackerContainer, buttonDiv);
+
+        var removeTracker = document.getElementById("removeTracker");
+        removeTracker.setAttribute("class", "tracker" + ++j); //[0]
+        removeTracker.setAttribute("id", j);
+
+        var companyIDForm = document.getElementById("companyIDForm");
+        companyIDForm.setAttribute("class", "tracker" + j); //[1]
+        companyIDForm.setAttribute("id", "form" + j);
+
+        companyIDForm.addEventListener("submit", function (event) {
+            event.preventDefault();
+        });
+
+        var companyIDInput = document.getElementById("companyIDInput");
+        companyIDInput.setAttribute("class", "tracker" + j); //[2]
+        companyIDInput.setAttribute("id", "formInput" + j);
+
+        var searchButton = document.getElementById("searchButton");
+        searchButton.setAttribute("class", "tracker" + j); //[3]
+        searchButton.setAttribute("id", "search" + j);
+
+        var loader = document.getElementById("loader");
+        loader.setAttribute("class", "tracker" + j); //[4]
+        loader.setAttribute("id", "loader" + j);
+
+        var invalidErrorMsg = document.getElementById("invalidErrorMsg");
+        invalidErrorMsg.setAttribute("class", "tracker" + j); //[5]
+        invalidErrorMsg.setAttribute("id", "invalidErrorMsg" + j);
+
+        var unknownErrorMsg = document.getElementById("unknownErrorMsg");
+        unknownErrorMsg.setAttribute("class", "tracker" + j); //[6]
+        unknownErrorMsg.setAttribute("id", "unknownErrorMsg" + j);
+
+        var networkErrorMsg = document.getElementById("networkErrorMsg");
+        networkErrorMsg.setAttribute("class", "tracker" + j); //[7]
+        networkErrorMsg.setAttribute("id", "networkErrorMsg" + j);
+
+        var queueIDList = document.getElementById("queueIDList");
+        queueIDList.setAttribute("id", "selectList" + j);
+        queueIDList.setAttribute("class", "tracker" + j); //[8]
+
+        var checkbox = document.getElementById("checkbox");
+        checkbox.setAttribute("class", "tracker" + j); //[9]
+        checkbox.setAttribute("id", "checkbox" + j);
+
+        var secLoader = document.getElementById("secLoader");
+        secLoader.setAttribute("class", "tracker" + j); //[10]
+        secLoader.setAttribute("id", "secLoader" + j);
+
+        var line_graph = document.getElementById("line_graph");
+        line_graph.setAttribute("class", "tracker" + j); //[11]
+        line_graph.setAttribute("id", "line_graph" + j);
+    }
+
+    function submitAction(id) {
+        var className = document.getElementById(id).className;
+
+        var form = document.getElementsByClassName(className)[1].id;
+        var formInput = document.getElementsByClassName(className)[2].id;
+
+        var companyIDForm = document.getElementById(form);
+        var company_id = document.getElementById(formInput).value;
+
+        var queueIDList = document.getElementsByClassName(className)[8].id;
+        var queueIDListLength = document.getElementById(queueIDList).length;
+
+        var loader = document.getElementsByClassName(className)[4].id;
+        var loaderID = document.getElementById(loader);
+
+        var invalid = document.getElementsByClassName(className)[5].id;
+        var invalidID = document.getElementById(invalid);
+
+        var unknown = document.getElementsByClassName(className)[6].id;
+        var unknownID = document.getElementById(unknown);
+
+        var network = document.getElementsByClassName(className)[7].id;
+        var networkID = document.getElementById(network);
+
+        loaderID.style.display = "block";
+
+        var queueIDList = document.getElementsByClassName(className)[8].id;
+        var queueIDListId = document.getElementById(queueIDList);
+
+        // to reset previous queue_id searched
+        while (queueIDListId.childElementCount != 1) {
+            queueIDListId.removeChild(queueIDListId.lastElementChild);
+        }
+        axios.get(`http://localhost:8080/company/queue/`, {
+            params: { company_id }
+        }).then(function (res) {
+            invalidID.style.display = "none";
+            unknownID.style.display = "none";
+            loaderID.style.display = "none";
+            networkID.style.display = "none";
+
+            var queueID = res.data;
+            console.log(queueID)
+
+            if (queueID.length == 0) {
+                unknownID.style.display = "block";
+            } else if (queueID.length >= 1) {
+
+                queueIDListId.selectedIndex = 0;
+
+                for (let i = 0; i < queueID.length; i++) {
+                    var option = document.createElement('OPTION');
+                    option.setAttribute("id", queueIDList + " option " + i);
+                    var txt = document.createTextNode(queueID[i].queue_id);
+
+                    //queueIDListId.innerHTML += '<option id="' + i + '">' + queueID[i].queue_id + '</option>';
+
+                    console.log(queueID[i])
+                    // set grey color for inactive queue id
+                    if (queueID[i].is_active == 0) {
+                        option.style.color = "rgb(211, 211, 211)";
+                    }
+
+                    option.value = queueID[i].queue_id;
+                    option.appendChild(txt);
+                    queueIDListId.insertBefore(option, queueIDListId.lastChild);
+                }
+
+                var checkbox = document.getElementsByClassName(className)[9].id;
+
+                checkState(checkbox);
+            }
+
+        }).catch(function (error) {
+
+            if (error.message == 'Request failed with status code 400') {
+                invalidID.style.display = "block";
+                unknownID.style.display = "none";
+                loaderID.style.display = "none";
+                networkID.style.display = "none";
+            } else if (error.message == 'Network Error') {
+                networkID.style.display = "block";
+                invalidID.style.display = "none";
+                unknownID.style.display = "none";
+            }
+        });
+
+    };
+
+    function checkState(id) {
+        var checkbox = document.getElementById(id);
+        var className = document.getElementById(id).className;
+
+        var queueIDList = document.getElementsByClassName(className)[8].id;
+        var queueIDListLength = document.getElementById(queueIDList).length - 1;
+
+        for (var i = 0; i < queueIDListLength; i++) {
+            var options = document.getElementById(queueIDList + " option " + i);
+
+            if (options.style.color == "rgb(211, 211, 211)") {
+                options.style.display = (checkbox.checked ? "none" : "block");
+            }
+        }
+    }
+
+    function fnRemove(id) {
+        var child = document.getElementById(id);
+        child.parentNode.removeChild(child);
+    }
+
+</script>
+
+<script id="trackerHTML" type="text/html">
+    <div class="container" id="tracker">
+        <div class="form-container">
+            <!-- close button to remove container -->
+            <button type="button" id="removeTracker" name="close" class="btn-close" aria-label="Close" onclick="fnRemove(this.id)">&times;</button>
+            <!-- company id field and search button -->
+            <div class="form-group row">
+                <form class="companyIDForm" id="companyIDForm">
+                    <label for="companyID" style="padding-right:10px; color: #ffffff; ">Company ID</label>
+                        <!-- <span class="fa fa-search form-control-feedback"></span> -->
+                        <!-- <span class="fa fa-search"></span> -->
+                        <input type="text" class="companyIDInput" id="companyIDInput" style="background-color: #fdb812; color: #ffffff; ">
+                    <!-- <button class="btn btn-default mb-2 mr-sm-2" id="searchButton" onclick="submitAction(this.id)">Search</button> -->
+                    <button class="searchButton" id="searchButton" name="search" onclick="submitAction(this.id)">Search</button>
+                    <div class="loader" id="loader" name="loader"></div>
+                    <div id="invalidErrorMsg" name="invalid">Invalid Company ID</div>
+                    <div id="unknownErrorMsg" name="unknown">Unknown Company ID</div>
+                    <div id="networkErrorMsg" name="network">Network Error/ Unknown Error</div>
+                </form>
+            </div>
+
+            <!-- queue id dropdown and checkbox -->
+            <form class="form-inline">
+                <label for="queueID" style="padding-right:10px; color: #ffffff; " class="mb-2 mr-sm-4">Queue ID</label>
+                
+                <div class="mb-2 mr-sm-2">
+                    <select style="background-color: #fdb812; color: #ffffff; " id="queueIDList" name="queue" class="queueIDList" onchange="arrivalRateGraph(this.id)">
+                        <option selected disabled hidden>Select Queue ID</option>
+                    </select>
+                </div>
+                
+                <div id="queue" class="form-check mb-2 mr-sm-2" style="pointer-events: click">
+                    <label class="form-check-label" style="margin-left:30px; color: #ffffff;">
+                        <input type="checkbox" class="checkbox" name="hide" id="checkbox"
+                            onclick="checkState(this.id)" checked>Hide Inactive
+                            <span class="customCheck"></span>
+                    </label>
+                </div>
+            </form>
+        </div>
+
+        <div class="secLoader" id="secLoader" name="loader" style="margin-left: 500px"></div>
+
+        <!--Div that will hold the line graph-->
+        <div id="line_graph"></div>
+    </div>
+</script>
+
+
+<body style="background-color: #fdb812;">
+    <div class="container-fluid">
+        <h1><img src="genkiLogo.jpeg" style="width: 125px; height:110px;">
+        <label style="color: #ffffff; font-size: 40px; font-family: Tw Cen MT black;">Genki Queue Monitor</label>
+    </h1>
+        <div class="row" id="trackerRow">
+            <div class="col-xs-12 col-sm-6" id="buttonDiv">
+                <button type="button" id="trackerbtn" class="btn btn-lg btn-block" onclick="addTrackerContainer()">Add
+                    tracker</button>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
